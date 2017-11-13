@@ -4,6 +4,8 @@ import re
 import hashlib
 import json
 import codecs  
+import random
+import pymongo
 from scrapy.selector import Selector
 from scrapy6bro.items import Scrapy6BroItem
 from scrapy.spider import Spider  
@@ -18,6 +20,21 @@ def get_md5_value(src):
       myMd5.update(src.encode('utf-8'))
       myMd5_Digest = myMd5.hexdigest()
       return myMd5_Digest
+
+def find_url() :
+    page = random.randint(24000000,26000000)
+    url = "http://www.budejie.com/detail-"+str(page)+'.html'
+    mongo_uri = "mongodb://localhost:27017",
+    mongo_db ="src6bro"
+    client = pymongo.MongoClient(mongo_uri)
+    db = client[mongo_db]
+    table = db['budejie']
+    if table.find_one({"source":url}) :
+        client.close()
+    else :
+    	# client.close()
+    	yield scrapy.Request("http://www.budejie.com/detail-"+str(page)+'.html',callback=self.parse)  
+      	
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
@@ -59,7 +76,8 @@ class QuotesSpider(scrapy.Spider):
         #           f.write(one.extract().encode('utf-8'))
         #           continue
         # f.close()    
-
+        if response.status == 404:
+        	find_url()
 
 # budejie detail parse
         page = response.url.split("/")
@@ -74,11 +92,15 @@ class QuotesSpider(scrapy.Spider):
 
         m = re.compile(r'//.*')
         outtmp = re.sub(m, ' ', json_text)
-        outstring = outtmp
+        n =  re.compile(r'^(?:http|ftp)s?://',re.IGNORECASE)
+        outtmp1 = re.sub(n, ' ', outtmp)
+        outstring = outtmp1
 
         
-        data = json.loads(outstring)
-        if "段子" in data['tag'] :
+
+        try :
+         data = json.loads(outstring)
+         if "段子" in data['tag'] :
           print(outstring)
           myMd5 = hashlib.md5()
           myMd5.update(data['title'].encode('utf-8'))
@@ -89,6 +111,9 @@ class QuotesSpider(scrapy.Spider):
           item['source'] = response.url
           item['contentid'] = data['id']
           yield item 
+        except:
+          find_url()
+        
 
       
         # # pattern_end = re.compile('<\s*/\s*span\s*>',re.I)
@@ -160,9 +185,24 @@ class QuotesSpider(scrapy.Spider):
 
     #   for one in items :           
     #      yield one 
+        page = random.randint(24000000,26000000)
+        url = "http://www.budejie.com/detail-"+str(page)+'.html'
+        mongo_uri = "mongodb://localhost:27017",
+        mongo_db ="src6bro"
+        client = pymongo.MongoClient(mongo_uri)
+        db = client[mongo_db]
+        table = db['budejie']
+        if table.find_one({"source":url}) :
+            client.close()
+        else :
+        	# client.close()
+        	yield scrapy.Request("http://www.budejie.com/detail-"+str(page)+'.html',callback=self.parse) 
+         	
+
 
     #   # # proceeding crwal
-    #   page=48   
+       
+       
     #   # while page<13 :
     #   while page<52 :
     #      page +=1

@@ -15,3 +15,4 @@ class Scrapy6BroItem(scrapy.Item):
     source  = Field()
     md5     = Field()
     contentid = Field()
+
