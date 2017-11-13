@@ -33,7 +33,7 @@ def find_url() :
         client.close()
     else :
     	# client.close()
-    	yield scrapy.Request("http://www.budejie.com/detail-"+str(page)+'.html',callback=self.parse)  
+    	yield scrapy.Request(url,callback=self.parse)  
       	
 
 class QuotesSpider(scrapy.Spider):
@@ -76,7 +76,9 @@ class QuotesSpider(scrapy.Spider):
         #           f.write(one.extract().encode('utf-8'))
         #           continue
         # f.close()    
-        if response.status == 404:
+        if response.status == 200:
+        	pass
+        else :	
         	find_url()
 
 # budejie detail parse
