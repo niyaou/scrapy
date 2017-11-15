@@ -6,6 +6,9 @@ import json
 import codecs  
 import random
 import pymongo
+import requests
+import base64
+import time
 from scrapy.selector import Selector
 from scrapy6bro.items import Scrapy6BroItem
 from scrapy.spider import Spider  
@@ -14,6 +17,7 @@ from w3lib.html import remove_tags
 from bs4 import BeautifulSoup
 from scrapy.spiders.crawl import Rule, CrawlSpider
 from scrapy.linkextractors import LinkExtractor
+from pyDes import *
 
 def get_md5_value(src):
       myMd5 = hashlib.md5()
@@ -25,10 +29,11 @@ def get_md5_value(src):
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
-
+    Des_Key =  "AB+ujs@u" # Key
+    Des_IV = "12345678" # 自定IV向量
   #  def start_requests(self):
     page = random.randint(20000000,28000000)
-    url = "http://www.budejie.com/detail-"+str(page)+'.html'
+    url = "http://www.budejie.com/detail-"+str(25069978)+'.html'
     allowed_domains = ["budejie.com"]
     start_urls  = [
 
@@ -52,13 +57,26 @@ class QuotesSpider(scrapy.Spider):
  
 
     def find_url(self) :
-     page = random.randint(20000000,28000000)
+     page = random.randint(24000000,26000000)
      url = "http://www.budejie.com/detail-"+str(page)+'.html'
-     mongo_uri = "mongodb://localhost:27017",
-     mongo_db ="src6bro"
-     client = pymongo.MongoClient(mongo_uri)
-     db = client[mongo_db]
-     table = db['budejie']
+
+      #"yyyy/MM/dd HH:mm:ss"
+     res=requests.post('http://192.168.1.101:8080/GetJokeDataByContent',data =json.dumps({"contentid":page}))
+     dates=json.loads(res.text)
+     print(dates['code'])
+    
+     if dates['code'] == 200 :
+       # print(json.dumps(dates['data']))
+       self.find_url()
+     else:
+       return scrapy.Request(url,callback=self.parse)  
+
+
+     # mongo_uri = "mongodb://localhost:27017",
+     # mongo_db ="src6bro"
+     # client = pymongo.MongoClient(mongo_uri)
+     # db = client[mongo_db]
+     # table = db['budejie']
      if table.find_one({"source":url}) :
         # client.close()
          self.find_url()
@@ -100,6 +118,11 @@ class QuotesSpider(scrapy.Spider):
         #           f.write(one.extract().encode('utf-8'))
         #           continue
         # f.close()    
+    
+ 
+
+     
+    
      if response.status == 200:
         	
         
@@ -124,7 +147,7 @@ class QuotesSpider(scrapy.Spider):
           outtmp1 = re.sub(n, ' ', outtmp)
           outstring = outtmp1
 
-        
+         
 
           try :
            data = json.loads(outstring)
@@ -138,8 +161,19 @@ class QuotesSpider(scrapy.Spider):
             item['content'] =data['title']
             item['source'] = response.url
             item['contentid'] = data['id']
-           yield item 
-          except:
+            now_time = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
+            k = des(self.Des_Key, CBC, self.Des_IV, pad=None, padmode=PAD_PKCS5)
+            d = k.encrypt(now_time)
+            token=base64.b64encode(d).decode('utf-8') #转base64编码返回) #转base64编码返回
+              
+            resp=requests.post('http://192.168.1.101:8080/UploadJokesData',data =json.dumps({"token":token,"data":{"md5":myMd5_Digest,
+                "content":data['title'],"source":response.url,"contentid":data['id']}})  )
+            dates=json.loads(resp.text)
+            print(dates)
+            yield item 
+
+          except Exception as e:
+            print('parse json error')
          #   find_url()
             yield self.find_url()
         
