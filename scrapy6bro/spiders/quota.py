@@ -164,10 +164,12 @@ class QuotesSpider(scrapy.Spider):
             now_time = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
             k = des(self.Des_Key, CBC, self.Des_IV, pad=None, padmode=PAD_PKCS5)
             d = k.encrypt(now_time)
+            # print(data['title'])
             token=base64.b64encode(d).decode('utf-8') #转base64编码返回) #转base64编码返回
-              
-            resp=requests.post('http://192.168.1.101:8080/UploadJokesData',data =json.dumps({"token":token,"data":{"md5":myMd5_Digest,
-                "content":data['title'],"source":response.url,"contentid":data['id']}})  )
+            rof=json.dumps({"token":token,"data":{"md5":myMd5_Digest,
+                "content":data['title'],"source":response.url,"contentid":data['id']}})
+            print(rof)  
+            resp=requests.post('http://192.168.1.101:8080/UploadJokesData',data = rof )
             dates=json.loads(resp.text)
             print(dates)
             yield item 
