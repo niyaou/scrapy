@@ -15,28 +15,13 @@ from bs4 import BeautifulSoup
 from scrapy.spiders.crawl import Rule, CrawlSpider
 from scrapy.linkextractors import LinkExtractor
 
-
 def get_md5_value(src):
       myMd5 = hashlib.md5()
       myMd5.update(src.encode('utf-8'))
       myMd5_Digest = myMd5.hexdigest()
       return myMd5_Digest
 
-def find_url() :
-    page = random.randint(20000000,28000000)
-    url = "http://www.budejie.com/detail-"+str(page)+'.html'
-    mongo_uri = "mongodb://localhost:27017",
-    mongo_db ="src6bro"
-    client = pymongo.MongoClient(mongo_uri)
-    db = client[mongo_db]
-    table = db['budejie']
-    if table.find_one({"source":url}) :
-        # client.close()
-        find_url()
-    else :
-    	# client.close()
-    	yield scrapy.Request(url,callback=self.parse)  
-      	
+
 
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
@@ -54,16 +39,34 @@ class QuotesSpider(scrapy.Spider):
       
         ]
     rules = ( #自动从response中根据正则表达式提取url，再根据这个url再次发起请求，并用callback解析返回的结果
-        Rule(LinkExtractor(allow=(r'https://www.budejie.com/detail-*'), restrict_xpaths=('//div[@id="c-next-btn"]/a')),callback='parse_start_url',follow = True),
+        Rule(LinkExtractor(allow=(r'https://www.budejie.com/detail-\d*')), follow = True),
+        )
        #Rule(LinkExtractor(allow=(r'https://movie.douban.com/tag/\[wW]+'))), # 从网页中提取http链接
         
-    )
+    
   #      for url in urls:
    #         yield scrapy.Request(url=url, callback=self.parse)
 
 
 
  
+
+    def find_url(self) :
+     page = random.randint(20000000,28000000)
+     url = "http://www.budejie.com/detail-"+str(page)+'.html'
+     mongo_uri = "mongodb://localhost:27017",
+     mongo_db ="src6bro"
+     client = pymongo.MongoClient(mongo_uri)
+     db = client[mongo_db]
+     table = db['budejie']
+     if table.find_one({"source":url}) :
+        # client.close()
+         self.find_url()
+     else :
+        # client.close()
+        return scrapy.Request(url,callback=self.parse)  
+        
+
 
 
     def parse_start_url(self, response):
@@ -73,7 +76,7 @@ class QuotesSpider(scrapy.Spider):
                  url = response.urljoin(url) # 补全
                  print(url)
                 
-                 yield scrapy.Request(url)
+                 yield scrapy.Request(url) 
 
 
 
@@ -97,51 +100,51 @@ class QuotesSpider(scrapy.Spider):
         #           f.write(one.extract().encode('utf-8'))
         #           continue
         # f.close()    
-        # if response.status == 200:
-        # 	pass
-        # else :	
-        # 	find_url()
+     if response.status == 200:
+        	
+        
 
 # budejie detail parse
-        page = response.url.split("/")
-        filename = 'quotes-%s.html' % page
-        pattern = re.compile('/\{.+\}/s',re.I)
-        soup = BeautifulSoup(response.body,"lxml")
+         page = response.url.split("/")
+         filename = 'quotes-%s.html' % page
+         pattern = re.compile('/\{.+\}/s',re.I)
+         soup = BeautifulSoup(response.body,"lxml")
 
-        script = soup.find('script', text=re.compile('_BFD\.BFD_INFO'))
-        try :
-         json_text = re.search(r'^\s*_BFD\.BFD_INFO\s*=\s*({.*?})\s*;\s*$',
+         script = soup.find('script', text=re.compile('_BFD\.BFD_INFO'))
+         try :
+          json_text = re.search(r'^\s*_BFD\.BFD_INFO\s*=\s*({.*?})\s*;\s*$',
                       script.string, flags=re.DOTALL | re.MULTILINE).group(1)
        
 
 
 
-         m = re.compile(r'//.*')
-         outtmp = re.sub(m, ' ', json_text)
-         n =  re.compile(r'^(?:http|ftp)s?://',re.IGNORECASE)
-         outtmp1 = re.sub(n, ' ', outtmp)
-         outstring = outtmp1
+          m = re.compile(r'//.*')
+          outtmp = re.sub(m, ' ', json_text)
+          n =  re.compile(r'^(?:http|ftp)s?://',re.IGNORECASE)
+          outtmp1 = re.sub(n, ' ', outtmp)
+          outstring = outtmp1
 
         
 
-         try :
-          data = json.loads(outstring)
-          if "段子" in data['tag'] :
-           print(outstring)
-           myMd5 = hashlib.md5()
-           myMd5.update(data['title'].encode('utf-8'))
-           myMd5_Digest = myMd5.hexdigest()
-           item = Scrapy6BroItem()
-           item['md5'] = myMd5_Digest
-           item['content'] =data['title']
-           item['source'] = response.url
-           item['contentid'] = data['id']
+          try :
+           data = json.loads(outstring)
+           if "段子" in data['tag'] :
+            print(outstring)
+            myMd5 = hashlib.md5()
+            myMd5.update(data['title'].encode('utf-8'))
+            myMd5_Digest = myMd5.hexdigest()
+            item = Scrapy6BroItem()
+            item['md5'] = myMd5_Digest
+            item['content'] =data['title']
+            item['source'] = response.url
+            item['contentid'] = data['id']
            yield item 
-         except:
+          except:
          #   find_url()
-           pass
+            yield self.find_url()
         
-
+         except:
+            yield self.find_url()
       
         # # pattern_end = re.compile('<\s*/\s*span\s*>',re.I)
         # with open(filename, 'wb') as f:
@@ -212,6 +215,12 @@ class QuotesSpider(scrapy.Spider):
 
     #   for one in items :           
     #      yield one 
+
+
+         yield self.find_url()
+
+     else :    
+         yield self.find_url()
          # page = random.randint(24000000,26000000)
          # url = "http://www.budejie.com/detail-"+str(page)+'.html'
          # mongo_uri = "mongodb://localhost:27017",
@@ -220,7 +229,7 @@ class QuotesSpider(scrapy.Spider):
          # db = client[mongo_db]
          # table = db['budejie']
          # if table.find_one({"source":url}) :
-         #     client.close()
+         #    find_url()
          # else :
         	# # client.close()
          # 	yield scrapy.Request("http://www.budejie.com/detail-"+str(page)+'.html',callback=self.parse) 
@@ -248,5 +257,4 @@ class QuotesSpider(scrapy.Spider):
     # #         a.append(p.sub(' ',t))
     # #     return a
 
-        except:
-        	pass
+     
