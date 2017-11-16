@@ -56,12 +56,18 @@ class QuotesSpider(scrapy.Spider):
 
  
 
-    def find_url(self) :
+    def find_url(self,page_index=0) :
+
      page = random.randint(24000000,26000000)
+     if page_index == 0:
+        pass
+     else :
+        page = page_index + 1
+
      url = "http://www.budejie.com/detail-"+str(page)+'.html'
 
       #"yyyy/MM/dd HH:mm:ss"
-     res=requests.post('http://192.168.1.101:8080/GetJokeDataByContent',data =json.dumps({"contentid":page}))
+     res=requests.post('http://47.95.201.80/6bro/GetJokeDataByContent',data =json.dumps({"contentid":page}))
      dates=json.loads(res.text)
      print(dates['code'])
     
@@ -140,7 +146,7 @@ class QuotesSpider(scrapy.Spider):
        
 
 
-
+          page_int=0
           m = re.compile(r'//.*')
           outtmp = re.sub(m, ' ', json_text)
           n =  re.compile(r'^(?:http|ftp)s?://',re.IGNORECASE)
@@ -161,6 +167,7 @@ class QuotesSpider(scrapy.Spider):
             item['content'] =data['title']
             item['source'] = response.url
             item['contentid'] = data['id']
+            page_int = int(data['id'])
             now_time = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
             k = des(self.Des_Key, CBC, self.Des_IV, pad=None, padmode=PAD_PKCS5)
             d = k.encrypt(now_time)
@@ -169,7 +176,7 @@ class QuotesSpider(scrapy.Spider):
             rof=json.dumps({"token":token,"data":{"md5":myMd5_Digest,
                 "content":data['title'],"source":response.url,"contentid":data['id']}})
             print(rof)  
-            resp=requests.post('http://192.168.1.101:8080/UploadJokesData',data = rof )
+            resp=requests.post('http://47.95.201.80/6bro/UploadJokesData',data = rof )
             dates=json.loads(resp.text)
             print(dates)
             yield item 
@@ -253,7 +260,7 @@ class QuotesSpider(scrapy.Spider):
     #      yield one 
 
 
-         yield self.find_url()
+         yield self.find_url(page_int)
 
      else :    
          yield self.find_url()
